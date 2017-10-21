@@ -1,6 +1,0 @@
-SDL Package install
-1. tar xvfz SDL*.tar
-2. ./configure
-3. sudo make && make install
-4. Change atexit(SDL_Quit) with SQL_Quit() in application.
-

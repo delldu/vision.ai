@@ -7,11 +7,13 @@
 #************************************************************************************/
 #
 
+TORCH7_INSTALL_DIR=$(shell dirname ${DYLD_LIBRARY_PATH})
+
 LIB_NAME := libvision
 
 INCS	:= \
 	-Iinclude \
-	-I/home/dell/torch/install/include \
+	-I$(TORCH7_INSTALL_DIR)/include \
 	-I/usr/local/include
 
 	# -I$(BUILD_DIR)/include
@@ -47,7 +49,6 @@ SOURCE :=  \
 DEFINES := 
 CFLAGS := -O2 -fPIC -Wall -Wextra
 LDFLAGS := -fPIC \
-	-L/usr/local/lib -lSDL \
 	-ljpeg -lpng
  
 
@@ -97,5 +98,5 @@ clean:
 	rm -rf *.a *.so *.o $(OBJECTS)
 
 install:
-	cp ${LIB_NAME}.so /home/dell/torch/install/lib
+	cp ${LIB_NAME}.so $(TORCH7_INSTALL_DIR)/lib
 

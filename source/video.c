@@ -1215,7 +1215,7 @@ static int __video_match(VIDEO * video,  IMAGE *model, double threshold)
 
 
 
-static int __video_sview(VIDEO * video, int method)
+static int __video_sview(VIDEO * video, int start)
 {
 	int page;
 	IMAGE *C;
