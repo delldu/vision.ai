@@ -1,8 +1,8 @@
 #/************************************************************************************
 #***
-#***	Copyright 2017 Dell(18588220928@163.com), All Rights Reserved.
+#***	Copyright 2020 Dell(18588220928@163.com), All Rights Reserved.
 #***
-#***	File Author: Dell, Sun Feb  5 20:51:04 CST 2017
+#***	File Author: Dell, Sun Feb  5 20:51:04 CST 2020
 #***
 #************************************************************************************/
 #
@@ -62,7 +62,7 @@ clean:
 install:
 	sudo mkdir -p ${INSTALL_DIR}/include
 	sudo cp image/*.h ${INSTALL_DIR}/include
-	
+
 	sudo mkdir -p ${INSTALL_DIR}/lib
 	sudo cp ${LIB_NAME}.so ${INSTALL_DIR}/lib
 	sudo cp ${LIB_NAME}.a ${INSTALL_DIR}/lib

@@ -63,6 +63,8 @@ typedef struct {
 	BYTE rgbReserved;
 } BITMAP_RGBQUAD;
 
+int image_memsize(WORD h, WORD w);
+void image_membind(IMAGE *img, WORD h, WORD w);
 
 static void __jpeg_errexit (j_common_ptr cinfo)
 {
