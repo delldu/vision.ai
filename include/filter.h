@@ -35,7 +35,6 @@ int matrix_bilate_filter(MATRIX *mat, double hs, double hr);
 int image_make_noise(IMAGE *img, char orgb, int rate);
 int image_delete_noise(IMAGE *img);
 int image_gauss_filter(IMAGE *image, double sigma);
-int image_bilate_filter(IMAGE *image, double hs, double hr);
 int image_guided_filter(IMAGE *img, IMAGE *guidance, int radius, double eps, int scale, int debug);
 int image_beeps_filter(IMAGE *img, double stdv, double dec, int debug);
 int image_lee_filter(IMAGE *img, int radius, double eps, int debug);

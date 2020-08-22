@@ -86,21 +86,6 @@ static int __gain_offset(MATRIX *mat, double gain, double offset)
 	return RET_OK;
 }
 
-static int __gimp_scale(MATRIX *mat, double sigma)
-{
-	double avg, stdv;
-	double smin, smax;
-
-	check_matrix(mat);
-	matrix_statistics(mat, &avg, &stdv);
-	smin = avg - sigma*stdv;
-	smax = avg + sigma*stdv;
-
-	matrix_scale(mat, smin, smax, 0.0f, 255.0f);
-
-	return RET_OK;
-}
-
 int image_retinex(IMAGE *image, int nscale)
 {
 	int i, j;
@@ -133,15 +118,11 @@ int image_retinex(IMAGE *image, int nscale)
 	src = image_getplane(image, 'B'); check_matrix(rmat);
 	__color_restore(bmat, src, gray);
 	matrix_destroy(src);
-#if 1
+
 	__gain_offset(rmat, 30, -6);
 	__gain_offset(gmat, 30, -6);
 	__gain_offset(bmat, 30, -6);
-#else
-	__gimp_scale(rmat, 3.0f);
-	__gimp_scale(gmat, 3.0f);
-	__gimp_scale(bmat, 3.0f);
-#endif
+
 	image_setplane(image, 'R', rmat);
 	image_setplane(image, 'G', gmat);
 	image_setplane(image, 'B', bmat);

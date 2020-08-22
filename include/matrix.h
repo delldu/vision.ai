@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -62,7 +62,6 @@ int matrix_valid(MATRIX *M);
 int matrix_pattern(MATRIX *M, char *name);
 
 int matrix_outdoor(MATRIX *M, int i, int di, int j, int dj);
-int matrix_multi(MATRIX *C, MATRIX *A, MATRIX *B);
 int matrix_save(MATRIX *mat, char *fname);
 
 int matrix_setvalue(MATRIX *mat, int row, int col, double val);
@@ -87,9 +86,6 @@ void matrix_region(MATRIX *mat, int r, int c, int theta, MATRIX *outmat);
 // sort
 int matrix_sort(MATRIX *A, int cols, int descend);
 
-// Create stdard difference
-int matrix_normdif(MATRIX *mat, double sigma);
-
 int matrix_clean(MATRIX *mat);
 
 // Pryrmid down/up
@@ -98,10 +94,6 @@ MATRIX *matrix_pyrup(MATRIX *mat);
 
 void matrix_print(MATRIX *m, char *format);
 
-int matrix_makegrid(MATRIX *mat);
-
-int matrix_linesolve(MATRIX *matrix);
-MATRIX *matrix_inverse(MATRIX *matrix);
 MATRIX *matrix_transpose(MATRIX *matrix);
 
 // Dot add/sub/mul/div
@@ -110,13 +102,6 @@ int matrix_sub(MATRIX *A, MATRIX *B);
 int matrix_mul(MATRIX *A, MATRIX *B);
 int matrix_div(MATRIX *A, MATRIX *B);
 
-int matrix_rectclamp(MATRIX *mat, RECT *rect);
-int matrix_statistics(MATRIX *mat, double *avg, double *stdv);
-int matrix_rect_statistics(MATRIX *mat, RECT *rect, double *avg, double *stdv);
-
-int matrix_scale(MATRIX *mat, double smin, double smax, double dmin, double dmax);
-
-int matrix_showasimg(char *title, MATRIX *mat);
 
 void matrix_destroy(MATRIX *m);
 

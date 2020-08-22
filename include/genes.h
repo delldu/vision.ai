@@ -3,7 +3,7 @@
 ***
 ***  Gene Expression Programming
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Wed Sep  5 09:38:26 CST 2012
 ***

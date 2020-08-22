@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -236,25 +236,6 @@ double vector_entropy(VECTOR *v)
 	}
 
 	return d/log(2);
-}
-
-int vector_smooth(VECTOR *v)
-{
-	int i, j;
-	double first, curr, next, last;
-
-	check_vector(v);
-	for (i = 0; i < 2; i++) {		// 2 pass smooth 
-		first = v->ve[0];
-		last = v->ve[v->m - 1];
-		for (j = 0; j < v->m; j++) {
-			curr = v->ve[j];
-			next = (j == v->m - 1)? first : v->ve[j + 1];
-			v->ve[j] = (last + curr + next)/3.0f;
-			last = curr;
-		}
-	}
-	return RET_OK;
 }
 
 // Guass 1D kernel

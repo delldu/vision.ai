@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -87,20 +87,11 @@ int video_play(char *filename, int start);
 // Video MDS: Motion Detection System
 int video_mds(char *filename, int start);
 
-// Video PDS: Plane Detection System
-int video_pds(char *filename, int start);
-
-int video_compress(char *filename, int start, double threshold);
-int video_match(char *filename, int start, IMAGE *model, double threshold);
-
 // Video IDS: Instrusion Detection System
 int video_ids(char *filename, int start, double threshold);
 
-
 // YUV420 !!!
 int yuv420_play(char *filename, int width, int height);
-
-int video_sview(char *filename, int method);
 
 #if defined(__cplusplus)
 }

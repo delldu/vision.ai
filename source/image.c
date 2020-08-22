@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -15,6 +15,8 @@
 #include <errno.h>
 
 // Support JPEG image
+#define CONFIG_JPEG 1
+
 #ifdef CONFIG_JPEG
 #include <jpeglib.h>
 #include <jerror.h>
@@ -74,6 +76,7 @@ RGB *__image_rgb_nb[IMAGE_MAX_NB_SIZE];
 extern int color_rgbcmp(RGB *c1, RGB *c2);
 extern void color_rgbsort(int n, RGB *cv[]);
 
+#define CONFIG_PNG 1
 
 #ifdef CONFIG_JPEG
 static void __jpeg_errexit (j_common_ptr cinfo)
@@ -1786,189 +1789,10 @@ int image_morph(IMAGE *img, char action)
 	return RET_OK;	
 }
 
-
-#ifdef CONFIG_SDL
-#include <SDL/SDL.h>
-int image_show(char *title, IMAGE *img)
-{
-	BYTE *p, h, s, v, y, cb, cr;
-	int i, j, win_height, win_width;
-	int b_quit = 0, b_fullscreen = 0;
-	SDL_Rect dstrect;
- 	SDL_Event event;
-	SDL_Surface *rgbsurface, *screen;
-	Uint32 rmask, gmask, bmask, amask;
-
-	/* Open SDL */
-	if (SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO)) {
-		syslog_error("init SDL.");
-		return RET_ERROR;
-	}
-
-	/* Clean up on exit */
-	// atexit(SDL_Quit) is evil !!!;
-	SDL_Quit();
-	
-	SDL_WM_SetCaption("IMAGE", NULL);
-
-	SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, 100);
-	SDL_EventState(SDL_KEYUP, SDL_IGNORE);
-
-	win_width = MAX(img->width, 256);
-	win_height = MAX(img->height, 128);
-	dstrect.w = img->width;
-	dstrect.h = img->height;
-
-	screen = SDL_SetVideoMode(win_width, win_height, 24,
-	                     SDL_HWSURFACE | SDL_RESIZABLE | SDL_ASYNCBLIT | SDL_HWACCEL | SDL_ANYFORMAT);
-	if (screen == NULL) {
-		syslog_error("SDL_SetVideoMode, %s.", SDL_GetError());
-		return RET_ERROR;
-	}
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-	rmask = 0xff000000;
-	gmask = 0x00ff0000;
-	bmask = 0x0000ff00;
-	amask = 0x00000000; // 0x000000ff;
-#else
-	rmask = 0x000000ff;
-	gmask = 0x0000ff00;
-	bmask = 0x00ff0000;
-	amask = 0x00000000; // 0xff000000;
-#endif
-	rgbsurface = SDL_CreateRGBSurface(SDL_SWSURFACE, img->width, img->height, 24, rmask, gmask, bmask, amask);
-	if(rgbsurface == NULL) {
-		syslog_error("Create RGBSurface, %s\n", SDL_GetError());
-		return RET_ERROR;
-	}
-
-	SDL_WM_SetCaption(title, NULL);
-
-	image_foreach(img, i, j) {
-		p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-		p[0] = img->ie[i][j].r; p[1] = img->ie[i][j].g; p[2] = img->ie[i][j].b;
-	}
-
-	while (! b_quit) {
-		dstrect.x = (win_width - img->width)/2;
-		dstrect.y = (win_height - img->height)/2;
-		SDL_BlitSurface(rgbsurface, NULL, screen, &dstrect);
-		SDL_UpdateRect(screen, (win_width - img->width)/2, (win_height - img->height)/2, img->width, img->height);
-
-		// Process events
-		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-			case SDL_QUIT:
-				if (b_fullscreen)
-					SDL_WM_ToggleFullScreen(screen);
-				b_quit = 1;
-				break;
-					
-			case SDL_KEYDOWN:
-				switch (event.key.keysym.sym) {
-				case SDLK_q:
-				case SDLK_ESCAPE:
-					if (b_fullscreen)
-						SDL_WM_ToggleFullScreen(screen);
-					b_quit = 1;
-					break;
-
-				case SDLK_f:
-					if (SDL_WM_ToggleFullScreen(screen))
-						b_fullscreen = 1 - b_fullscreen;
-					break;
-
-				// ARGB
-				case SDLK_a:
-					image_foreach(img, i, j) {
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = img->ie[i][j].r; p[1] = img->ie[i][j].g; p[2] = img->ie[i][j].b;
-					}
-					break;
-				case SDLK_r:
-					image_foreach(img, i, j) {
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = img->ie[i][j].r;
-					}
-					break;
-				case SDLK_g:
-					image_foreach(img, i, j) {
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = img->ie[i][j].g;
-					}
-					break;
-				case SDLK_b:
-					image_foreach(img, i, j) {
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = img->ie[i][j].b;
-					}
-					break;
-				// YUV
-				case SDLK_y:
-					image_foreach(img, i, j) {
-						color_rgb2ycbcr(img->ie[i][j].r, img->ie[i][j].g, img->ie[i][j].b, &y, &cb, &cr);
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = (BYTE)y;
-					}
-					break;
-				case SDLK_u:
-					image_foreach(img, i, j) {
-						color_rgb2ycbcr(img->ie[i][j].r, img->ie[i][j].g, img->ie[i][j].b, &y, &cb, &cr);
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = (BYTE)cb;
-					}
-					break;
-				case SDLK_v:
-					image_foreach(img, i, j) {
-						color_rgb2ycbcr(img->ie[i][j].r, img->ie[i][j].g, img->ie[i][j].b, &y, &cb, &cr);
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = (BYTE)cr;
-					}
-					break;
-				// HSV
-				case SDLK_h:
-					image_foreach(img, i, j) {
-						color_rgb2hsv(img->ie[i][j].r, img->ie[i][j].g, img->ie[i][j].b, &h, &s, &v);
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = h;
-					}
-					break;
-				case SDLK_s:
-					image_foreach(img, i, j) {
-						color_rgb2hsv(img->ie[i][j].r, img->ie[i][j].g, img->ie[i][j].b, &h, &s, &v);
-						p = (BYTE *)rgbsurface->pixels + i * rgbsurface->pitch + j * 3;
-						p[0] = p[1] = p[2] = s;
-					}
-					break;
-					
-				default:
-					break;
-				}
-				break;
-			case SDL_VIDEORESIZE:
-				screen = SDL_SetVideoMode(event.resize.w, event.resize.h, 24,
-					SDL_HWSURFACE | SDL_RESIZABLE | SDL_ASYNCBLIT | SDL_HWACCEL | SDL_ANYFORMAT);
-				win_width = event.resize.w;
-				win_height = event.resize.h;
-				break;
-
-			default:
-				break;
-			}
-		}
-	}
-
-	SDL_FreeSurface(rgbsurface);
-
-	return RET_OK;
-}
-
-#else
 int image_show(char *title, IMAGE *img)
 {
 	return image_save(img, "image_show.jpg");
 }
-#endif
 
 
 IMAGE *image_hmerge(IMAGE *image1, IMAGE *image2)
@@ -2181,7 +2005,6 @@ void image_voice_show(IMAGE *image, int rows, int cols, int levs, int number)
 		show->ie[i][j].b = v;
 	}
 
-	image_show("Voice show", show);
 	image_destroy(show);
 }
 
@@ -2371,46 +2194,6 @@ MATRIX *image_entropy(IMAGE *image, int rows, int cols, int levs, int debug)
 
 	return mat;
 }
-
-// xxxx9999
-#if 0
-IMAGE *image_affine(IMAGE *img, MATRIX *mat)
-{
-	IMAGE *timg;
-	int i, j, r, c, min_r, max_r, min_c, max_c;
-	
-	if (mat->m != 2 || mat->n != 2) {
-		syslog_error("Matrix is not (2, 2).");
-		return NULL;
-	}
-	min_r = min_c = max_r = max_c = 0;
-	image_foreach(img,i,j) {
-		r = mat->me[0][0]*i + mat->me[0][1]*j;
-		c = mat->me[1][0]*i + mat->me[1][1]*j;
-		if (r < min_r)
-			min_r = r;
-		if (r > max_r)
-			max_r =r;
-		if (c < min_c)
-			min_c = c;
-		if (c > max_c)
-			max_c = c;
-	}
-
-	timg = image_create(max_r - min_r + 1, max_c - min_c + 1);
-	if (timg) {
-		image_foreach(img,i,j) {
-			r = mat->me[0][0]*i + mat->me[0][1]*j - min_r;
-			c = mat->me[1][0]*i + mat->me[1][1]*j - min_c;
-			timg->ie[r][c].r = img->ie[i][j].r;
-			timg->ie[r][c].g = img->ie[i][j].g;
-			timg->ie[r][c].b = img->ie[i][j].b;
-		}
-	}
-
-	return timg;
-}
-#endif
 
 IMAGE *image_subimg(IMAGE *img, RECT *rect)
 {

@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -179,7 +179,6 @@ static int rect_divide(MATRIX *mat, RECT *rect, RECT *rect1, RECT *rect2)
 	return 0;
 }
 
-
 static int color_delta(RGB c1, RGB c2, int threshold)
 {
 	int delta = (c1.r - c2.r)*(c1.r - c2.r) + (c1.g - c2.g)*(c1.g - c2.g) + 	(c1.b - c2.b)*(c1.b - c2.b);
@@ -311,44 +310,6 @@ int object_fast_detect(IMAGE *img)
 	return RET_OK;
 }
 
-int object_detect(IMAGE *img, int levs)
-{
-	int i, j, k, n;
-	int rows, cols, bh, bw;
-	MATRIX *diffmat;
-	VECTOR *voice; 
-	RECTS *mrs = rect_set();
-
-	rows = img->height/3;
-	cols = img->width/3;
-	voice = image_voice(img, rows, cols, levs, 1);
-
-	bh = (img->height + rows - 1)/rows;
-	bw = (img->width + cols - 1)/cols;
-
-	mrs->count = 0;
-	diffmat = matrix_create(rows, cols); check_matrix(diffmat);
-	for (k = 0; k < levs; k++) {
-		matrix_foreach(diffmat,i,j) {
-			n = VOICE_CELL_OFFSET(i, j, k);
-			diffmat->me[i][j] = voice->ve[n];
-		}
-		matrix_clean(diffmat);
-		object_search(diffmat);
-	}
-	matrix_destroy(diffmat);
-
-	vector_destroy(voice);
-
-	for (i = 0; i < mrs->count; i++) {
-		mrs->rect[i].r *= bh;
-		mrs->rect[i].c *= bw;
-		mrs->rect[i].h *= bh;
-		mrs->rect[i].w *= bw;
-	}
-
-	return RET_OK;
-}
 
 int motion_updatebg(IMAGE *A, IMAGE *B, IMAGE *C, IMAGE *bg)
 {
@@ -397,20 +358,5 @@ int motion_detect(IMAGE *fg, IMAGE *bg, int debug)
 	matrix_destroy(diffmat);
 
 	return RET_OK;
-}
-
-double motion_ratio(IMAGE *img)
-{
-	int i;
-	double sum;
-	
-	RECTS *mrs = rect_set();
-	sum = 0.0f;
-	for (i = 0; i < mrs->count; i++) {
-		sum += 1.0f*mrs->rect[i].h * mrs->rect[i].w;
-	}
-	sum /= (img->height * img->width);
-
-	return sum;
 }
 

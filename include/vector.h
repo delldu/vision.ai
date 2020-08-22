@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -15,7 +15,6 @@
 extern "C" {
 #endif
 
-#include "config.h"
 #include "common.h"
 
 // double Vector
@@ -67,8 +66,6 @@ VECTOR *vector_gskernel(double sigma);
 
 void vector_print(VECTOR *v, char *format);
 void vector_destroy(VECTOR *v);
-int vector_smooth(VECTOR *v);
-
 
 
 #if defined(__cplusplus)

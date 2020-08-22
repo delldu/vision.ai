@@ -11,12 +11,8 @@
 extern "C" {
 #endif
 
-#define CONFIG_FASTSIFT 1
 #define CONFIG_JPEG 1
 #define CONFIG_PNG 1
-
-// #define CONFIG_SDL 1
-
 
 #if defined(__cplusplus)
 }

@@ -36,7 +36,6 @@ int color_prmgain(IMAGE *img, double *r_gain, double *g_gain, double *b_gain);
 int color_rect_prmgain(IMAGE *img, RECT *rect, double *r_gain, double *g_gain, double *b_gain);
 
 int color_correct(IMAGE *img, double gain_r, double gain_g, double gain_b);
-int color_upseep(IMAGE *a, IMAGE *b, int height);
 int color_togray(IMAGE *img);
 int color_torgb565(IMAGE *img);
 double color_distance(RGB *c1, RGB *c2);

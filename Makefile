@@ -1,26 +1,21 @@
 #/************************************************************************************
 #***
-#***	Copyright 2017 Dell(dellrunning@gmail.com), All Rights Reserved.
+#***	Copyright 2017 Dell(18588220928@163.com), All Rights Reserved.
 #***
 #***	File Author: Dell, Sun Feb  5 20:51:04 CST 2017
 #***
 #************************************************************************************/
 #
 
-TORCH7_INSTALL_DIR=$(shell dirname ${DYLD_LIBRARY_PATH})
-
 LIB_NAME := libvision
+INSTALL_DIR := /tmp/local/
+#/usr/local/
 
 INCS	:= \
 	-Iinclude \
-	-I$(TORCH7_INSTALL_DIR)/include \
 	-I/usr/local/include
 
-	# -I$(BUILD_DIR)/include
 SOURCE :=  \
-	vision.c \
-	limage.c \
-	lvideo.c \
 	source/color.c \
 	source/frame.c \
 	source/hough.c \
@@ -31,7 +26,6 @@ SOURCE :=  \
 	source/common.c  \
 	source/image.c \
 	source/motion.c \
-	source/sift.c \
 	source/texture.c \
 	source/video.c \
 	source/blend.c \
@@ -40,8 +34,6 @@ SOURCE :=  \
 	source/seam.c \
 	source/histogram.c \
 	source/retinex.c \
-	source/sview.c \
-	source/plane.c \
 	source/phash.c
 
 #	source/genes.c 
@@ -63,20 +55,14 @@ OBJECTS := $(addsuffix .o,$(basename ${SOURCE}))
 #****************************************************************************
 # Compile block
 #****************************************************************************
-all: sharelib
-# sharelib
-# staticlib
+all: sharelib staticlib
 
 sharelib: $(OBJECTS)
 	$(LD) $(LDFLAGS) -shared -soname $(LIB_NAME).so -o $(LIB_NAME).so $(OBJECTS)
-	# cp $(LIB_NAME).so ${INSTALL_DIR}/lib
-	# mv $(LIB_NAME).so ../lib
 
 
 staticlib:$(OBJECTS)
 	$(AR) $(ARFLAGS) $(LIB_NAME).a $(OBJECTS)
-	# cp $(LIB_NAME).a ${INSTALL_DIR}/lib
-	# mv $(LIB_NAME).a ../lib
 
 
 #****************************************************************************
@@ -98,5 +84,9 @@ clean:
 	rm -rf *.a *.so *.o $(OBJECTS)
 
 install:
-	cp ${LIB_NAME}.so $(TORCH7_INSTALL_DIR)/lib
+	sudo mkdir -p ${INSTALL_DIR}/include/vision
+	sudo cp include/*.h ${INSTALL_DIR}/include/vision 
+	sudo cp ${LIB_NAME}.so ${INSTALL_DIR}/lib
+	sudo cp ${LIB_NAME}.a ${INSTALL_DIR}/lib
+
 

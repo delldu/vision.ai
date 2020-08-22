@@ -19,7 +19,6 @@ extern "C" {
 // Blending 
 int blend_cluster(IMAGE *src, IMAGE *mask, IMAGE *dst, int top, int left, int debug);
 IMAGE *blend_mutiband(IMAGE *a, IMAGE *b, IMAGE *mask, int layers, int debug);
-IMAGE *blend_3x3codec(IMAGE *a, IMAGE *b, IMAGE *mask, int debug);
 
 
 #if defined(__cplusplus)

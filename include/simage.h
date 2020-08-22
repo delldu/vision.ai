@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -15,9 +15,6 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-#include "config.h"
-
 
 #include "common.h"
 #include "image.h"

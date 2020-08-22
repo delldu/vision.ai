@@ -820,41 +820,6 @@ int image_gauss_filter(IMAGE *image, double sigma)
 	return RET_OK;
 }
 
-int image_bilate_filter(IMAGE *image, double hs, double hr)
-{
-	int i, j;
-	MATRIX *mat;
-	
-	check_image(image);
-
-	if (image->format == IMAGE_GRAY) {
-		mat = image_getplane(image, 'R');  check_matrix(mat);
-		matrix_bilate_filter(mat, hs, hr);
-		image_setplane(image, 'R', mat);
-		matrix_destroy(mat);
-		image_foreach(image,  i, j)
-			image->ie[i][j].g = image->ie[i][j].b = image->ie[i][j].r;
-	}
-	else {
-		mat = image_getplane(image, 'R');  check_matrix(mat);
-		matrix_bilate_filter(mat, hs, hr);
-		image_setplane(image, 'R', mat);
-		matrix_destroy(mat);
-
-		mat = image_getplane(image, 'G');  check_matrix(mat);
-		matrix_bilate_filter(mat, hs, hr);
-		image_setplane(image, 'G', mat);
-		matrix_destroy(mat);
-
-		mat = image_getplane(image, 'B');  check_matrix(mat);
-		matrix_bilate_filter(mat, hs, hr);
-		image_setplane(image, 'B', mat);
-		matrix_destroy(mat);
-	}
-	
-	return RET_OK;
-}
-
 int image_guided_filter(IMAGE *img, IMAGE *guidance, int radius, double eps, int scale, int debug)
 {
 	MATRIX *mat_img, *mat_guidance;

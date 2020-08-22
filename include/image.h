@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -256,18 +256,10 @@ int image_skeleton(IMAGE *img);
 int shape_midedge(IMAGE *img);
 int shape_bestedge(IMAGE *img);
 
-int image_show(char *title, IMAGE *img);
-
-// SIFT
-MATRIX *sift_detect(IMAGE *img, int debug);
-int sift_match(IMAGE *image1, IMAGE *image2);
-
 // Hough Transform
 int line_detect(IMAGE *img, int debug);
-int object_detect(IMAGE *img, int num);
 int motion_updatebg(IMAGE *A, IMAGE *B, IMAGE *C, IMAGE *bg);
 int motion_detect(IMAGE *fg, IMAGE *bg, int debug);
-double motion_ratio(IMAGE *img);
 int object_fast_detect(IMAGE *fg);
 
 // Matter center
@@ -282,17 +274,11 @@ double image_likeness(IMAGE *a, IMAGE *b, int debug);
 double image_cosine(IMAGE *a, IMAGE *b, int debug);
 MATRIX *image_entropy(IMAGE *image, int rows, int cols, int levs, int debug);
 
-#if 0
-IMAGE *image_affine(IMAGE *img, MATRIX *mat);
-#endif
 
 IMAGE *image_subimg(IMAGE *img, RECT *rect);
 
 void image_drawrects(IMAGE *img);
 MATRIX *image_gstatics(IMAGE *img, int rows, int cols);
-
-int image_3x3enc(IMAGE *img);
-int image_3x3dec(IMAGE *img);
 
 IMAGE *image_prydown(IMAGE *img);
 IMAGE *image_pryup(IMAGE *img);

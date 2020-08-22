@@ -1,7 +1,7 @@
 
 /************************************************************************************
 ***
-***	Copyright 2012 Dell Du(dellrunning@gmail.com), All Rights Reserved.
+***	Copyright 2012 Dell Du(18588220928@163.com), All Rights Reserved.
 ***
 ***	File Author: Dell, Sat Jul 31 14:19:59 HKT 2010
 ***
@@ -620,87 +620,6 @@ int matrix_outdoor(MATRIX *M, int i, int di, int j, int dj)
 	return (i + di < 0 || i + di >= M->m || j + dj < 0 || j + dj >= M->n);
 }
 
-// [C] = [A] * [B]
-int matrix_multi(MATRIX *C, MATRIX *A, MATRIX *B)
-{
-	int i, j, k;
-	double d;
-
-	check_matrix(C);
-	check_matrix(A);
-	check_matrix(B);
-
-	if (A->n != B->m) {
-		syslog_error("Matrix  AxB dimensions.");
-		return RET_ERROR;
-	}
-
-	if (C->m < A->m || C->n < B->n) {
-		syslog_error("RESULT matrix C dimension too small.");
-		return RET_ERROR;
-	}
-
-	for (i = 0; i < A->m; i++) {
-		for (j = 0; j < B->n; j++) {
-		    d = 0.0f;
-	    	for (k = 0; k < A->n; k++) {
-	        	d += A->me[i][k] * B->me[k][j];
-	    	}
-			C->me[i][j] = d;
-		}
-	}
-	return RET_OK;
-}
-
-// (M, I) ==> (I, Mi)
-MATRIX *matrix_inverse(MATRIX *matrix)
-{
-	int i, j;
-	MATRIX *bmat, *imat;
-
-	if (! matrix_valid(matrix)) {
-		syslog_error("Bad matrix.");
-		return NULL;
-	}
-
-	if (matrix->m != matrix->n) {
-		syslog_error("Matrix  (%d, %d) is not square.", matrix->m, matrix->n);
-		return NULL;
-	}
-
-	bmat = matrix_create(matrix->n, 2 * matrix->m);
-	if (! matrix_valid(bmat)) {
-		syslog_error("Matrix create.");
-		return NULL;
-	}
-
-	matrix_foreach(matrix, i, j)
-	bmat->me[i][j] = matrix->me[j][i];
-	for (i = 0; i < matrix->m; i++)
-		bmat->me[i][matrix->n + i] = 1;
-
-	if (matrix_linesolve(bmat) != RET_OK)
-		goto quit;
-
-	imat = matrix_create(matrix->m, matrix->n);
-	if (! matrix_valid(imat)) {
-		syslog_error("Matrix create.");
-		goto quit;
-	}
-
-	// Save matrix
-	matrix_foreach(imat, i, j)
-		imat->me[i][j] = bmat->me[i][j + imat->n];
-
-	matrix_destroy(bmat);
-
-	return imat;
-	
-quit:
-	matrix_destroy(bmat);
-	return NULL;
-}
-
 
 MATRIX *matrix_transpose(MATRIX *matrix)
 {
@@ -720,70 +639,6 @@ MATRIX *matrix_transpose(MATRIX *matrix)
 
         return transmat;
 }
-
-
-// Solve linear equation: Ax = b,  matrix = (A,b)
-int matrix_linesolve(MATRIX *matrix)
-{
-	int i, j, k;
-	double factor;
-
-	check_matrix(matrix);
-
-	if (matrix->m >= matrix->n) {
-		syslog_error("Bad equation row (%d) and col (%d).", matrix->m, matrix->n);
-		return RET_ERROR;
-	}
-	
-#if 0 // Only for test
-	for (i = 0; i < matrix->m; i++) {
-		matrix->me[i][matrix->m] = 0;
-		for (j = 0; j < matrix->n - 1; j++)
-			matrix->me[i][matrix->m] += matrix->me[i][j] * (j + 1);
-	}
-#endif
-
-	// Low triangle
-	for (k = 0; k < matrix->m - 1; k++) {
-		if (ABS(matrix->me[k][k]) < MIN_DOUBLE_NUMBER) {
-			syslog_error("Matrix  value %lf at (%d, %d) is zero.", matrix->me[k][k], k, k);
-			return RET_ERROR;
-		}
-		for (i = k + 1; i < matrix->m; i++) {
-			factor = -matrix->me[i][k]/matrix->me[k][k];
-			for (j = k; j < matrix->n; j++)
-				matrix->me[i][j] += factor * matrix->me[k][j];
-		}
-	}
-
-	// Feed back
-	for (k = matrix->m - 1; k > 0; k--) {
-			if (ABS(matrix->me[k][k]) < MIN_DOUBLE_NUMBER) {
-				syslog_error("Matrix  value %lf at (%d, %d) is zero.", matrix->me[k][k], matrix->m, matrix->n);
-			return RET_ERROR;
-		}
-		for (i = k - 1; i >= 0; i--) {
-			factor = -matrix->me[i][k]/matrix->me[k][k];
-			for (j = k; j < matrix->n; j++)
-				matrix->me[i][j] += factor * matrix->me[k][j];
-		}
-	}
-
-	// Unit dialog elements
-	for (k = 0; k < matrix->m; k++) {
-		if (ABS(matrix->me[k][k]) < MIN_DOUBLE_NUMBER) {
-			syslog_error("Matrix  value %lf at (%d, %d) is zero.", matrix->me[k][k], matrix->m, matrix->n);
-			return RET_ERROR;
-		}
-		factor = 1.0f/matrix->me[k][k];
-		for (j = matrix->m; j < matrix->n; j++)
-			matrix->me[k][j] *= factor;
-		matrix->me[k][k] = 1.00f;
-	}
-
-	return RET_OK;
-}
-
 
 int matrix_integrate(MATRIX *mat)
 {
@@ -1102,24 +957,6 @@ MATRIX *matrix_wkmeans(MATRIX *mat, int k, distancef_t distance)
 	return ccmat;
 }
 
-// NO Lua interface
-void matrix_region(MATRIX *mat, int r, int c, int theta, MATRIX *outmat)
-{
-	double x, y, co, si, t;
-	int i, j, nr, nc, rows, cols;
-	
-	rows = outmat->m/2; 
-	cols = outmat->n/2;
-	t = MATH_PI * theta/180; co = cos(t); si = sin(t);
-	for (i = -rows; i < rows; i++) {
-		for (j = -cols; j < cols; j++) {
-			y = j * si + i*co; nr = (int)y;
-			x = j * co - i*si; nc = (int)x;
-			outmat->me[i + rows][j + cols] = matrix_outdoor(mat, r, nr, c, nc)? mat->me[r][c] : mat->me[r + nr][c + nc];
-		}
-	}
-}
-
 int matrix_sort(MATRIX *A, int cols, int descend)
 {
         check_matrix(A);
@@ -1132,38 +969,6 @@ int matrix_sort(MATRIX *A, int cols, int descend)
         qsort(A->base, A->m, A->n * sizeof(double), descend? __dcmp_1col : __cmp_1col);
 
         return RET_OK;
-}
-
-
-// Create difference matrix
-int matrix_normdif(MATRIX *mat, double sigma)
-{
-	int i, j;
-	double d, avg, stdv;
-
-	check_matrix(mat);
-
-	avg = stdv = 0;
-	matrix_foreach(mat,i,j)
-		avg += mat->me[i][j];
-	avg /= mat->m * mat->n;
-	matrix_foreach(mat,i,j) {
-		d = mat->me[i][j] - avg;
-		d *= d;
-		stdv += d;
-	}
-	stdv /= mat->m * mat->n;
-	stdv = sqrt(stdv);
-
-	// printf("Difference Matrix: avg = %.4f, stdv = %.4f\n", avg, stdv);
-
-	stdv = avg + sigma * stdv;
-	matrix_foreach(mat,i,j) {
-		d = (mat->me[i][j] > stdv)? 1 : 0;
-		mat->me[i][j] = d;
-	}
-	
-	return RET_OK;
 }
 
 MATRIX *matrix_pyrdown(MATRIX *mat)
@@ -1197,47 +1002,6 @@ int matrix_clean(MATRIX *mat)
 	return RET_OK;
 }
 
-/*
-		D2
-	D1  d	D3
-		D4
-
-	a from 0 to 1 (from left to right)
-	b from 0 to 1 (from top to bottom)
-	
-	d = (1 - a)*(1 - b)*D1
-		+ (1- a)*b*D2
-		+ a * (1 - b)*D3
-		+ a * b * D4
-*/
-int matrix_makegrid(MATRIX *mat)
-{
-	int i, j;
-	double d1, d2, d3, d4, d, a, b;
-
-	check_matrix(mat);
-	
-	for (i = 1; i < mat->m - 1; i++) {
-		for (j = 1; j < mat->n - 1; j++) {
-			a = 1.0f*j/mat->n;
-			b = 1.0f*i/mat->m;
-			d1 = mat->me[i][0];
-			d2 = mat->me[0][j];
-			d3 = mat->me[i][mat->n - 1];
-			d4 = mat->me[mat->m - 1][j];
-			
-			d = (1.0f - a)*(1.0f - b)*d1 + (1.0f - a)*b*d2 + a*(1.0f - b)*d3 + a * b * d4;
-
-//			CheckPoint("i = %d, j = %d, a = %f, b = %f, d1 = %f, d2 = %f, d3 = %f, d4 = %f, d = %f", i, j, a, b, d1, d2, d3, d4, d);
-
-			mat->me[i][j] = d;
-		}
-	}
-
-	// matrix_gauss_filter(mat, 1.0f);
-
-	return RET_OK;
-}
 
 int matrix_add(MATRIX *A, MATRIX *B)
 {
@@ -1325,108 +1089,3 @@ int matrix_div(MATRIX *A, MATRIX *B)
 	
 	return RET_OK;
 }
-
-int matrix_rectclamp(MATRIX *mat, RECT *rect)
-{
-	if (! matrix_valid(mat) || ! rect)
-		return RET_ERROR;
-
-	rect->r = CLAMP(rect->r, 0, mat->m - 1);
-	rect->h = CLAMP(rect->h, 0, mat->m - rect->r);
-	rect->c = CLAMP(rect->c, 0, mat->n - 1);
-	rect->w = CLAMP(rect->w, 0, mat->n - rect->c);
-
-	return RET_OK;
-}
-
-int matrix_statistics(MATRIX *mat, double *avg, double *stdv)
-{
-	RECT rect;
-	
-	matrix_rect(&rect, mat);
-	return matrix_rect_statistics(mat, &rect, avg, stdv);
-}
-
-
-int matrix_rect_statistics(MATRIX *mat, RECT *rect, double *avg, double *stdv)
-{
-	int i, j;
-	double d, davg, dstdv;
-
-	check_matrix(mat);
-	matrix_rectclamp(mat, rect);
-
-	davg = dstdv = 0.0f;
-	rect_foreach(rect, i, j) {
-		d = mat->me[rect->r + i][rect->c + j];
-		davg += d;
-		dstdv += d*d;
-	}
-	davg /= (rect->h * rect->w);
-	*avg = davg;
-	*stdv = sqrt(dstdv/(rect->h * rect->w) - davg*davg);
-
-	return RET_OK;
-}
-
-// smin/smax -- source min/max, dmin/dmax -- destion min/max
-int matrix_scale(MATRIX *mat, double smin, double smax, double dmin, double dmax)
-{
-	int i, j;
-	double d;
-	check_matrix(mat);
-
-	if (ABS(smax - smin) >= MIN_DOUBLE_NUMBER) {
-		d = (dmax - dmin)/(smax - smin);
-		matrix_foreach(mat,i,j)
-			mat->me[i][j] = (mat->me[i][j] - smin)*d;
-	}
-	else {
-		matrix_foreach(mat,i,j)
-			mat->me[i][j] = dmin;
-	}
-	return RET_OK;
-}
-
-// Show matrix as image
-int matrix_showasimg(char *title, MATRIX *mat)
-{
-	int i, j;
-	double min, max;
-	IMAGE *img;
-	MATRIX *copy;
-
-	check_matrix(mat);
-	copy = matrix_copy(mat); check_matrix(copy);
-	
-	img = image_create(copy->m, copy->n); check_image(img);
-
-	min = max = copy->me[0][0];
-	matrix_foreach(copy,i,j) {
-		if (copy->me[i][j] > max) {
-			max = copy->me[i][j];
-		}
-		if (copy->me[i][j] < min) {
-			min = copy->me[i][j];
-		}
-	}
-	if (max - min > MIN_DOUBLE_NUMBER) {
-		max -= min;
-		matrix_foreach(mat,i,j) {
-			copy->me[i][j] -= min;
-			copy->me[i][j] /= max;
-			copy->me[i][j] *= 255.0f;
-		}
-	}
-	image_setplane(img, 'R', copy);
-	image_setplane(img, 'G', copy);
-	image_setplane(img, 'B', copy);
-	matrix_destroy(copy);
-
-	image_show(title, img);
-
-	image_destroy(img);
-
-	return RET_OK;
-}
-
