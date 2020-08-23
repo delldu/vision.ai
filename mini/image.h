@@ -45,6 +45,8 @@ typedef struct {
 	} while (0)
 
 
+char *image_version();
+
 IMAGE *image_create(WORD h, WORD w);
 
 int image_valid(IMAGE *img);

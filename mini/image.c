@@ -23,6 +23,12 @@
 // Support PNG image
 #include <png.h>
 
+char *image_version()
+{
+	return "1.0.0";
+}
+
+
 #define MAKE_FOURCC(a,b,c,d) (((DWORD)(a) << 0) | ((DWORD)(b) << 8) | ((DWORD)(c) << 16) | ((DWORD)(d) << 24))
 #define GET_FOURCC1(a) ((BYTE)((a) & 0xff))
 #define GET_FOURCC2(a) ((BYTE)(((a)>>8) & 0xff))

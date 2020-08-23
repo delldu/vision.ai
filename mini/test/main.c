@@ -62,8 +62,8 @@ int main(int argc, char **argv)
 		image = image_load(input_filename);
 		if (image_valid(image)) {
 			image_save(image, output_filename);
+			image_destroy(image);
 		}
-		image_destroy(image);
 	}
 	else {
 		help(argv[0]);

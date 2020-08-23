@@ -8,8 +8,7 @@
 #
 
 LIB_NAME := libimage
-INSTALL_DIR := /tmp/local/
-#/usr/local/
+INSTALL_DIR := /usr/local
 
 INCS	:= 
 
@@ -31,7 +30,8 @@ OBJECTS := $(addsuffix .o,$(basename ${SOURCE}))
 #****************************************************************************
 # Compile block
 #****************************************************************************
-all: sharelib staticlib
+all: staticlib
+# sharelib
 
 sharelib: $(OBJECTS)
 	$(LD) $(LDFLAGS) -shared -soname $(LIB_NAME).so -o $(LIB_NAME).so $(OBJECTS)
@@ -59,12 +59,12 @@ depend:
 clean:
 	rm -rf *.a *.so *.o $(OBJECTS)
 
-install:
+install: staticlib
 	sudo mkdir -p ${INSTALL_DIR}/include
-	sudo cp image/*.h ${INSTALL_DIR}/include
+	sudo cp image.h ${INSTALL_DIR}/include
 
 	sudo mkdir -p ${INSTALL_DIR}/lib
-	sudo cp ${LIB_NAME}.so ${INSTALL_DIR}/lib
+	# sudo cp ${LIB_NAME}.so ${INSTALL_DIR}/lib
 	sudo cp ${LIB_NAME}.a ${INSTALL_DIR}/lib
 
 
