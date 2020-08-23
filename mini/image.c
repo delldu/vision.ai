@@ -8,8 +8,13 @@
 
 #include "image.h"
 
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <syslog.h>
 #include <errno.h>
+#include <string.h>
+#include <assert.h>
 
 // Support JPEG image
 #include <jpeglib.h>
@@ -18,8 +23,15 @@
 // Support PNG image
 #include <png.h>
 
-
+#define MAKE_FOURCC(a,b,c,d) (((DWORD)(a) << 0) | ((DWORD)(b) << 8) | ((DWORD)(c) << 16) | ((DWORD)(d) << 24))
+#define GET_FOURCC1(a) ((BYTE)((a) & 0xff))
+#define GET_FOURCC2(a) ((BYTE)(((a)>>8) & 0xff))
+#define GET_FOURCC3(a) ((BYTE)(((a)>>16) & 0xff))
+#define GET_FOURCC4(a) ((BYTE)(((a)>>24) & 0xff))
 #define IMAGE_MAGIC MAKE_FOURCC('I','M','A','G')
+
+#define RET_OK 0
+#define RET_ERROR (-1)
 
 #define BITMAP_NO_COMPRESSION 0
 #define BITMAP_WIN_OS2_OLD 12
@@ -27,12 +39,6 @@
 #define BITMAP_OS2_NEW     64
 
 #define FILE_END(fp) (ferror(fp) || feof(fp))
-
-
-// voice = vector of image cube entroy !
-#define CUBE_DEF_ROWS 16
-#define CUBE_DEF_COLS 16
-#define CUBE_DEF_LEVS 16
 
 typedef struct {
 	WORD bfType;
@@ -63,8 +69,6 @@ typedef struct {
 	BYTE rgbReserved;
 } BITMAP_RGBQUAD;
 
-int image_memsize(WORD h, WORD w);
-void image_membind(IMAGE *img, WORD h, WORD w);
 
 static void __jpeg_errexit (j_common_ptr cinfo)
 {
@@ -136,74 +140,6 @@ static DWORD __get_pnmdword(FILE *fp)
 	return i;
 }
 
-static void *__image_malloc(WORD h, WORD w)
-{
-	void *img = (IMAGE *)calloc((size_t)1, image_memsize(h, w));
-	if (! img) { 
-		syslog_error("Allocate memeory.");
-		return NULL; 
-	}
-	return img;
-}
-
-extern int text_puts(IMAGE *image, int r, int c, char *text, int color);
-
-int image_memsize(WORD h, WORD w)
-{
-	int size;
-	
-	size = sizeof(IMAGE); 
-	size += (h * w) * sizeof(RGB);
-	size += h * sizeof(RGB *);
-	return size;
-}
-
-// mem align !
-void image_membind(IMAGE *img, WORD h, WORD w)
-{
-	int i;
-	void *base = (void *)img;
-	
-	img->magic = IMAGE_MAGIC;
-	img->height = h;
-	img->width = w;
-	img->base = (RGB *)(base + sizeof(IMAGE));	// Data
-	img->ie = (RGB **)(base + sizeof(IMAGE) + (h * w) * sizeof(RGB));	// Skip head and data
-	for (i = 0; i < h; i++) 
-		img->ie[i] = &(img->base[i * w]); 
-}
-
-IMAGE *image_create(WORD h, WORD w)
-{
-	void *base = __image_malloc(h, w);
-	if (! base) { 
-		return NULL; 
-	}
-	image_membind((IMAGE *)base, h, w);
-	return (IMAGE *)base;
-}
-
-int image_clear(IMAGE *img)
-{
-	check_image(img);
-	memset(img->base, 0, img->height * img->width * sizeof(RGB));
-	return RET_OK;
-}
-
-
-int image_valid(IMAGE *img)
-{
-	return (! img || img->height < 1 || img->width < 1 || ! img->ie || img->magic != IMAGE_MAGIC) ? 0 : 1;
-}
-
-
-void image_destroy(IMAGE *img)
-{
-	if (! image_valid(img)) 
-		return; 
-	free(img);
-}
-
 // PBM/PGM/PPM ==> pnm format file
 static IMAGE *image_loadpnm(char *fname)
 {
@@ -243,7 +179,7 @@ static IMAGE *image_loadpnm(char *fname)
 	case '1':		// ASCII Portable bitmap
 		image_foreach(img, i, j) {
 			g = __get_pnmc(fp);
-			img->ie[i][j].r = img->ie[i][j].g = img->ie[i][j].b = (g > 0)? 0 : 255;
+			img->R[i][j] = img->G[i][j] = img->B[i][j] = (g > 0)? 0 : 255;
 		}
 		break;
 	case '2':		// ASCII Portable graymap
@@ -251,7 +187,7 @@ static IMAGE *image_loadpnm(char *fname)
 			g = __get_pnmdword(fp);
 			if (g > 255)
 				g = g * 255/maxval;
-			img->ie[i][j].r = img->ie[i][j].g = img->ie[i][j].b = (BYTE)g;
+			img->R[i][j] = img->G[i][j] = img->B[i][j] = (BYTE)g;
 		}
 		break;
 	case '3':		// ASCII Portable pixmap
@@ -259,9 +195,9 @@ static IMAGE *image_loadpnm(char *fname)
 			r = __get_pnmdword(fp); if (r > 255) r = r*255/maxval;
 			g = __get_pnmdword(fp); if (g > 255) g = g*255/maxval;
 			b = __get_pnmdword(fp); if (b > 255) b = b*255/maxval;
-			img->ie[i][j].r = (BYTE)r;
-			img->ie[i][j].g = (BYTE)g;
-			img->ie[i][j].b = (BYTE)b;
+			img->R[i][j] = (BYTE)r;
+			img->G[i][j] = (BYTE)g;
+			img->B[i][j] = (BYTE)b;
 		}
 		break;
 	case '4':		// Binary Portable bitmap
@@ -273,7 +209,7 @@ static IMAGE *image_loadpnm(char *fname)
 					bitshift = 7;
 				}
 				g = ( c1 >> bitshift) & 1; g = (g == 0)? 255 : 0;
-				img->ie[i][j].r = img->ie[i][j].g = img->ie[i][j].b = (BYTE)g;
+				img->R[i][j] = img->G[i][j] = img->B[i][j] = (BYTE)g;
 				--bitshift;
 			}
 		}
@@ -281,30 +217,30 @@ static IMAGE *image_loadpnm(char *fname)
 	case '5':		// Binary Portable graymap
 		image_foreach(img, i, j) {
 			if (maxval < 256) 
-				img->ie[i][j].r = img->ie[i][j].g = img->ie[i][j].b = getc(fp);
+				img->R[i][j] = img->G[i][j] = img->B[i][j] = getc(fp);
 			else {
 				c1 = getc(fp); c2 = getc(fp);
 				g = c1 << 8 | c2;
 				g = g*255/maxval;
-				img->ie[i][j].r = img->ie[i][j].g = img->ie[i][j].b = g;;
+				img->R[i][j] = img->G[i][j] = img->B[i][j] = g;;
 			}
 		}
 		break;
 	case '6':		// Binary Portable pixmap
 		image_foreach(img, i, j) {
 			if (maxval < 256) {
-				img->ie[i][j].r = getc(fp);
-				img->ie[i][j].g = getc(fp);
-				img->ie[i][j].b = getc(fp);
+				img->R[i][j] = getc(fp);
+				img->G[i][j] = getc(fp);
+				img->B[i][j] = getc(fp);
 			}
 			else {
 				c1 = getc(fp); c2 = getc(fp); r = c1 << 8 | c2; r = r*255/maxval;
 				c1 = getc(fp); c2 = getc(fp); g = c1 << 8 | c2; g = g*255/maxval;
 				c1 = getc(fp); c2 = getc(fp); b = c1 << 8 | c2; b = b*255/maxval;
 
-				img->ie[i][j].r = r; 
-				img->ie[i][j].g = g;
-				img->ie[i][j].b = b;;
+				img->R[i][j] = r; 
+				img->G[i][j] = g;
+				img->B[i][j] = b;;
 			}
 		}
 		break;
@@ -407,9 +343,9 @@ static IMAGE *image_loadbmp(char *fname)
 					c = getc(fp);
 				if (j < info_header.biWidth) {
 					index = (c & 0x80) ? 1 : 0; c <<= 1;
-					img->ie[i][j].r = color_index_table[index].rgbRed;
-					img->ie[i][j].g = color_index_table[index].rgbGreen;
-					img->ie[i][j].b = color_index_table[index].rgbBlue;
+					img->R[i][j] = color_index_table[index].rgbRed;
+					img->G[i][j] = color_index_table[index].rgbGreen;
+					img->B[i][j] = color_index_table[index].rgbBlue;
 				}
 			}
 		}
@@ -423,9 +359,9 @@ static IMAGE *image_loadbmp(char *fname)
 					c = getc(fp);
 				if ( j < info_header.biWidth) {
 					index  = (c & 0xf0) >> 4; c <<= 4;
-					img->ie[i][j].r = color_index_table[index].rgbRed;
-					img->ie[i][j].g = color_index_table[index].rgbGreen;
-					img->ie[i][j].b = color_index_table[index].rgbBlue;
+					img->R[i][j] = color_index_table[index].rgbRed;
+					img->G[i][j] = color_index_table[index].rgbGreen;
+					img->B[i][j] = color_index_table[index].rgbBlue;
 				}
 			}
 		}
@@ -437,9 +373,9 @@ static IMAGE *image_loadbmp(char *fname)
 			for (j = 0; j < n && ! FILE_END(fp); j++) {
 				c = getc(fp);
 				if (j < info_header.biWidth) {
-					img->ie[i][j].r = color_index_table[c].rgbRed;
-					img->ie[i][j].g = color_index_table[c].rgbGreen;
-					img->ie[i][j].b = color_index_table[c].rgbBlue;
+					img->R[i][j] = color_index_table[c].rgbRed;
+					img->G[i][j] = color_index_table[c].rgbGreen;
+					img->B[i][j] = color_index_table[c].rgbBlue;
 				}
 			}
 		}
@@ -455,9 +391,9 @@ static IMAGE *image_loadbmp(char *fname)
 					getc(fp);
 				}
 
-				img->ie[i][j].r = r;
-				img->ie[i][j].g = g;
-				img->ie[i][j].b = b;
+				img->R[i][j] = r;
+				img->G[i][j] = g;
+				img->B[i][j] = b;
 			}
 			if (info_header.biBitCount == 24)	{
 				for (j = 0; j < n && ! FILE_END(fp); j++) // unused bytes 
@@ -515,9 +451,9 @@ int image_savebmp(IMAGE *img, const char *fname)
 	for (i = 0; i < img->height; i++) {
 		k = img->height - i - 1;
 		for (j = 0; j < img->width; j++) {
-			putc(img->ie[k][j].b, fp);	// Blue
-			putc(img->ie[k][j].g, fp);	// Green
-			putc(img->ie[k][j].r, fp);	// Red
+			putc(img->B[k][j], fp);	// Blue
+			putc(img->G[k][j], fp);	// Green
+			putc(img->R[k][j], fp);	// Red
 		}
 		for (j = 0; j < n; j++)
 			putc(0, fp);
@@ -565,18 +501,18 @@ static IMAGE *image_loadjpeg(char *fname)
 		for (i = 0; i < img->height; ++i) {
 			jpeg_read_scanlines (&cinfo, lineBuf, 1);
 			for (j = 0; j < img->width; j++) {
-				img->ie[i][j].r = lineBuf[0][3 * j];
-				img->ie[i][j].g = lineBuf[0][3 * j + 1];
-				img->ie[i][j].b = lineBuf[0][3 * j + 2];
+				img->R[i][j] = lineBuf[0][3 * j];
+				img->G[i][j] = lineBuf[0][3 * j + 1];
+				img->B[i][j] = lineBuf[0][3 * j + 2];
 			}
 		}
 	} else if (bytes_per_pixel == 1) {
 		for (i = 0; i < img->height; ++i) {
 			jpeg_read_scanlines (&cinfo, lineBuf, 1);
 			for (j = 0; j < img->width; j++) {
-				img->ie[i][j].r = lineBuf[0][j];
-				img->ie[i][j].g = lineBuf[0][j];
-				img->ie[i][j].b = lineBuf[0][j];
+				img->R[i][j] = lineBuf[0][j];
+				img->G[i][j] = lineBuf[0][j];
+				img->B[i][j] = lineBuf[0][j];
 			}			
 		}
 	} else {
@@ -599,13 +535,14 @@ read_fail:
 
 static int image_savejpeg(IMAGE *img, const char * filename, int quality)
 {
-	int i, j, row_stride;
-	BYTE *ic;		// image context
+	int row_stride;
 	FILE * outfile;
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
 	JSAMPROW row_pointer[1];
 	JSAMPLE *img_buffer;
+	int i, j;
+	BYTE *ic;		// image context
 
 	if (! image_valid(img)) {
 		syslog_error("Bad image.");
@@ -615,21 +552,17 @@ static int image_savejpeg(IMAGE *img, const char * filename, int quality)
 		syslog_error("Create file (%s).", filename);
 		return RET_ERROR;
 	}
-	if (sizeof(RGB) != 3) {
-		ic = (BYTE *)malloc(img->height * img->width * 3 * sizeof(BYTE));
-		if (! ic) {
-			syslog_error("Allocate memory.");
-			return RET_ERROR;
-		}
-		img_buffer = (JSAMPLE *)ic; // img->base;
-		image_foreach(img, i, j) {
-			*ic++ = img->ie[i][j].r;
-			*ic++ = img->ie[i][j].g;
-			*ic++ = img->ie[i][j].b;
-		}
+	ic = (BYTE *)malloc(img->height * img->width * 3 * sizeof(BYTE));
+	if (! ic) {
+		syslog_error("Allocate memory.");
+		return RET_ERROR;
 	}
-	else
-		img_buffer = (JSAMPLE *)img->base;
+	img_buffer = (JSAMPLE *)ic; // img->base;
+	image_foreach(img, i, j) {
+		*ic++ = img->R[i][j];
+		*ic++ = img->G[i][j];
+		*ic++ = img->B[i][j];
+	}
 
 	cinfo.err = jpeg_std_error(&jerr);
 	jpeg_create_compress(&cinfo);
@@ -657,9 +590,7 @@ static int image_savejpeg(IMAGE *img, const char * filename, int quality)
 
 	jpeg_destroy_compress(&cinfo);
 
-	if (sizeof(RGB) != 3) {
-		free(img_buffer);
-	}
+	free(img_buffer); // Do not free(ic) for ic++
 
 	return RET_OK;
 }
@@ -677,20 +608,19 @@ IMAGE *image_loadpng(char *fname)
 	png_uint_32 row_bytes;
 
 	png_uint_32 width, height;
-//	unsigned char r, g, b, a = '\0';
 	int bit_depth, channels, color_type, alpha_present, ret;
 	png_uint_32 i, row, col;
+	BYTE a = '\0';
 
 	if ((fp = fopen (fname, "rb")) == NULL) {
 		syslog_error("Loading PNG file (%s). error no: %d", fname, errno);
 		goto read_fail;
 	}
 	
-
 	/* read and check signature in PNG file */
 	ret = fread(buf, 1, 8, fp);
 	if (ret != 8 || ! png_check_sig(buf, 8)) {
-		syslog_error("Png check sig");
+		syslog_error("Png check signature");
 		return NULL;
 	}
 
@@ -810,18 +740,19 @@ IMAGE *image_loadpng(char *fname)
 	for (row = 0; row < height; row++) {
 		for (col = 0; col < width; col++) {
 			if (bit_depth == 16) {
-				image->ie[row][col].r = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
-				image->ie[row][col].g = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
-				image->ie[row][col].b = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
+				image->R[row][col] = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
+				image->G[row][col] = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
+				image->B[row][col] = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
 				if (alpha_present)
-					image->ie[row][col].a = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
+					a = (((unsigned char)*pix_ptr++ << 8) + (unsigned char)*pix_ptr++);
 			} else {
-				image->ie[row][col].r = (unsigned char)*pix_ptr++;
-				image->ie[row][col].g = (unsigned char)*pix_ptr++;
-				image->ie[row][col].b = (unsigned char)*pix_ptr++;
+				image->R[row][col] = (unsigned char)*pix_ptr++;
+				image->G[row][col] = (unsigned char)*pix_ptr++;
+				image->B[row][col] = (unsigned char)*pix_ptr++;
 				if (alpha_present)
-					image->ie[row][col].a = (unsigned char)*pix_ptr++;
+					a = (unsigned char)*pix_ptr++;
 			}
+			(void)a;	// avoid cimpiler complain.
 		}
 	}
 
@@ -836,10 +767,78 @@ IMAGE *image_loadpng(char *fname)
 read_fail:
 	if (fp)
 		fclose(fp);
-	if (image)
-		image_destroy(image);
+	image_destroy(image);
 
 	return NULL;
+}
+
+int image_valid(IMAGE *img)
+{
+	return (! img || img->magic != IMAGE_MAGIC || img->height < 1 || img->width < 1 || ! img->base || ! img->R || ! img->G || ! img->B)? 0 : 1;
+}
+
+IMAGE *image_create(WORD h, WORD w)
+{
+	int i;
+	IMAGE *image = NULL;
+	
+	image = (IMAGE *)calloc((size_t)1, sizeof(IMAGE));
+	if (! image)
+		goto mem_alloc_fail;
+
+	image->magic = IMAGE_MAGIC;
+	image->height = h;
+	image->width = w;
+	image->base = (BYTE *)calloc((size_t)1, 3 * h * w * sizeof(BYTE));
+	if (! image->base)
+		goto mem_alloc_fail;
+
+	image->R = (BYTE **)calloc((size_t)1, h * sizeof(BYTE *));
+	image->G = (BYTE **)calloc((size_t)1, h * sizeof(BYTE *));
+	image->B = (BYTE **)calloc((size_t)1, h * sizeof(BYTE *));
+	if (! image->R || ! image->G || ! image->B) { 
+		goto mem_alloc_fail;
+	}
+
+	// Bind R, G, B base address
+	for (i = 0; i < h; i++) {
+		image->R[i] = &(image->base[i * w]); 
+		image->G[i] = &(image->base[i * w + h*w]); 
+		image->B[i] = &(image->base[i * w + 2*h*w]); 
+	}
+
+	return image;
+
+mem_alloc_fail:
+	syslog_error("Allocate memeory.");
+	if (image) {
+		image_destroy(image);
+	}
+	return NULL;
+}
+
+int image_clear(IMAGE *img)
+{
+	check_image(img);
+	memset(img->base, 0, 3 * img->height * img->width * sizeof(BYTE));
+	return RET_OK;
+}
+
+IMAGE *image_copy(IMAGE *img)
+{
+	IMAGE *copy;
+	
+	if (! image_valid(img)) {
+		syslog_error("Bad source image.");
+		return NULL;
+	}
+
+	if ((copy = image_create(img->height, img->width)) == NULL) {
+		syslog_error("Create image.");
+		return NULL;
+	}
+	memcpy(copy->base, img->base, 3 * img->height * img->width * sizeof(BYTE));
+	return copy;
 }
 
 
@@ -874,24 +873,21 @@ int image_save(IMAGE *img, const char *fname)
 			return image_savejpeg(img, fname, 100);
  	}
 	
-	syslog_error("ONLY Support bmp/jpg/jpeg/h2p image.");
+	syslog_error("ONLY Support bmp/jpg/jpeg image.");
 	return RET_ERROR;
 }
 
-IMAGE *image_copy(IMAGE *img)
+void image_destroy(IMAGE *img)
 {
-	IMAGE *copy;
-	
-	if (! image_valid(img)) {
-		syslog_error("Bad image.");
-		return NULL;
-	}
-
-	if ((copy = image_create(img->height, img->width)) == NULL) {
-		syslog_error("Create image.");
-		return NULL;
-	}
-	memcpy(copy->base, img->base, img->height * img->width * sizeof(RGB));
-	return copy;
+	if (! img) 
+		return;
+	if (img->R)
+		free(img->R);
+	if (img->G)
+		free(img->G);
+	if (img->B)
+		free(img->B);
+	if (img->base)
+		free(img->base);
+	free(img);
 }
-
